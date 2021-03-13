@@ -13,16 +13,18 @@ def inch_to_meter(x):
 CAMERA_H_FOV = math.radians(65.0)
 CAMERA_V_FOV = math.radians(48.75)  # approximate, assuming same vertical as horizontal resolution
 
-ROI = ((512,256), (1536, 768))
+OUT_SCALE = 0.5
 
-HOLE_DIAMETER = inch_to_meter(6.0 + 2.0 + 2.0)
+ROI = ((350,250), (1920-350, 1080-250))
 
-MIN_R = 190
+HOLE_DIAMETER = inch_to_meter(9.75)
+
+MIN_R = 220
 MAX_R = 255
-MIN_G = 75
-MAX_G = 92
-MIN_B = 13
-MAX_B = 86
+MIN_G = 138
+MAX_G = 166
+MIN_B = 125
+MAX_B = 149
 
 def smooth_image(img):
 	return cv2.medianBlur(img, 5)
@@ -47,19 +49,21 @@ def find_hole(img):
 	binary_img = cv2.erode(binary_img, kernel)
 
 	edge = cv2.Canny(binary_img, 30, 100)
-	cv2.imshow('edge', edge)
-	_, contours, hierarchy = cv.findContours(edge, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-#	_, contours, hierarchy = cv.findContours(edge, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
+	cv2.imshow('edge', cv2.resize(edge, None,fx=OUT_SCALE, fy=OUT_SCALE))
+	_, contours, hierarchy = cv2.findContours(edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+#	_, contours, hierarchy = cv2.findContours(edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
-	max_x, max_y = 0
-	min_x, min_y = 9999
+	max_x = 0
+	max_y = 0
+	min_x = 9999
+	min_y = 9999
 
 	for cont in contours:
 		for point in cont:
-			min_x = min(min_x, point[0])
-			max_x = max(max_x, point[0])
-			min_y = min(min_y, point[1])
-			max_y = max(max_y, point[1])
+			min_x = min(min_x, point[0][0])
+			max_x = max(max_x, point[0][0])
+			min_y = min(min_y, point[0][1])
+			max_y = max(max_y, point[0][1])
 
 	x = (min_x + max_x)/2
 	y = (min_y + max_y)/2
@@ -74,7 +78,7 @@ if __name__=='__main__':
 	cap.set(4, 1080)
 	while(True):
 		ret, img_read = cap.read()
-
+		img_read = cv2.rotate(img_read, cv2.ROTATE_180)
 		cv2.imwrite("im_read.png", img_read)
 		img = crop_roi(img_read)
 
@@ -83,13 +87,13 @@ if __name__=='__main__':
 		if hole_dims != None:
 			angular_width = CAMERA_H_FOV / len(img[0]) * hole_dims[2]
 
-			cv2.circle(img_read,(int(hole_dims[0]),int(hole_dims[1])), hole_dims[2]/2,(0,255,0),3)
+			cv2.circle(img_read,(int(hole_dims[0]),int(hole_dims[1])), int(hole_dims[2]/2),(0,255,0),3)
 			distance = HOLE_DIAMETER/2 / math.tan(angular_width/2)
 
-			angle = ( )( x / len(img[0]) ) * CAMERA_H_FOV ) - CAMERA_H_FOV / 2
+			angle = ( ( ( hole_dims[0] / len(img[0]) ) * CAMERA_H_FOV ) - CAMERA_H_FOV / 2 )  * 57.2958
 			print("D: {0}m, A: {1}".format(distance, angle))
 
-		cv2.imshow('hole', img_read)
+		cv2.imshow('hole', cv2.resize(img_read, None, fx=OUT_SCALE, fy=OUT_SCALE))
 
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
