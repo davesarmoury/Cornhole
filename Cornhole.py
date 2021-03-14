@@ -4,6 +4,7 @@ import cv2
 import math
 import numpy as np
 import sys
+import socket
 
 def inch_to_meter(x):
 	return x * 0.0254
@@ -77,36 +78,71 @@ def find_hole(img):
 		y = (min_y + max_y)/2
 		return (x, y)
 
+def main():
+	print ("Starting...")
+
+	restartConnection()
+
+def openConnection():
+	#Opens socket for KUKA
+	TCP_PORT = 59152
+
+	print ("Making Connection Available on " + str(TCP_PORT))
+
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.bind(('', TCP_PORT))
+	s.listen(1)
+	conn, addr = s.accept()
+
+	print ('Connection from: %s', addr)
+
+	return conn
+
+def closeConnection(conn):
+	conn.close()
+
 if __name__=='__main__':
 	cap = cv2.VideoCapture(0)
 	cap.set(3, 1920)
 	cap.set(4, 1080)
-	while(True):
-		ret, img_read = cap.read()
-		#img_read = cv2.imread("85-5.png")
-		img_read = cv2.rotate(img_read, cv2.ROTATE_180)
-		cv2.imwrite("im_read.png", img_read)
-		img = crop_roi(img_read)
 
-		hole_pos = find_hole(img)
+	print ("Starting conncetion process...")
 
-		if hole_pos != None:
-			h_angle = ( ( hole_pos[0] / len(img[0]) ) * CAMERA_H_FOV ) - CAMERA_H_FOV / 2
-			v_angle = ( ( hole_pos[1] / len(img[1]) ) * CAMERA_V_FOV ) - CAMERA_V_FOV / 2 + CAM_ANGLE
-			cam_h_distance = CAM_Z / math.tan(v_angle)
+	conn = openConnection()
 
-			# SAS
-			throw_length = math.sqrt( CAM_X*CAM_X + cam_h_distance*cam_h_distance - 2 * CAM_X * cam_h_distance * math.cos(3.14159 - h_angle) )
-			throw_angle = math.acos( ( CAM_X*CAM_X + throw_length*throw_length - cam_h_distance*cam_h_distance ) / ( 2 * CAM_X * throw_length ) )
-			throw_angle = math.degrees(throw_angle)
+	if conn:
+		while(True):
+			ret, img_read = cap.read()
+			#img_read = cv2.imread("85-5.png")
+			img_read = cv2.rotate(img_read, cv2.ROTATE_180)
+			cv2.imwrite("im_read.png", img_read)
+			img = crop_roi(img_read)
 
-			cv2.circle(img_read,(int(hole_pos[0]),int(hole_pos[1])), int(50),(0,255,0),3)
+			hole_pos = find_hole(img)
 
-			print("D: {0}m, A: {1}".format(throw_length, throw_angle))
-			Power = 0.866 * throw_distance + 0.476
-			Angle = 0.702 * throw_angle + 6.95
+			if hole_pos != None:
+				h_angle = ( ( hole_pos[0] / len(img[0]) ) * CAMERA_H_FOV ) - CAMERA_H_FOV / 2
+				v_angle = ( ( hole_pos[1] / len(img[1]) ) * CAMERA_V_FOV ) - CAMERA_V_FOV / 2 + CAM_ANGLE
+				cam_h_distance = CAM_Z / math.tan(v_angle)
 
-		cv2.imshow('hole', cv2.resize(img_read, None, fx=OUT_SCALE, fy=OUT_SCALE))
+				# SAS
+				throw_length = math.sqrt( CAM_X*CAM_X + cam_h_distance*cam_h_distance - 2 * CAM_X * cam_h_distance * math.cos(3.14159 - h_angle) )
+				throw_angle = math.acos( ( CAM_X*CAM_X + throw_length*throw_length - cam_h_distance*cam_h_distance ) / ( 2 * CAM_X * throw_length ) )
+				throw_angle = math.degrees(throw_angle)
 
-		if cv2.waitKey(1) & 0xFF == ord('q'):
-			break
+				cv2.circle(img_read,(int(hole_pos[0]),int(hole_pos[1])), int(50),(0,255,0),3)
+
+				krl_power = 0.866 * throw_distance + 0.476
+				krl_angle = 0.702 * throw_angle + 6.95
+				print("D: {0}m, A: {1}".format(throw_length, throw_angle))
+				
+				conn.sendall(b"<Throw><Power>{0}</Power><Angle>{1}</Angle></Throw>".format(krl_power, krl_angle))
+
+			cv2.imshow('hole', cv2.resize(img_read, None, fx=OUT_SCALE, fy=OUT_SCALE))
+
+			if cv2.waitKey(1) & 0xFF == ord('q'):
+				break
+		closeConnection(conn)
+
+	else:
+		print ("Failed to connect to robot")

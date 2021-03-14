@@ -1,0 +1,16 @@
+<ETHERNETKRL>
+	<CONFIGURATION>
+		<EXTERNAL>
+			<IP>172.31.1.198</IP>
+			<PORT>59152</PORT>
+		</EXTERNAL>
+	</CONFIGURATION>
+	<RECEIVE/>
+	<SEND>
+      <XML>
+         	<ELEMENT Tag="Throw/Power" Type="FLOAT"/>
+         	<ELEMENT Tag="Throw/Angle" Type="FLOAT"/>
+			<ELEMENT Tag="Throw" Set_Flag="987" />
+       </XML>
+	</SEND>
+</ETHERNETKRL>
