@@ -11,7 +11,13 @@ def inch_to_meter(x):
 # Papalook AF925
 # taken from https://www.amazon.ca/PAPALOOK-AF925-360-Degree-Reduction-Microphone/dp/B07HGXGKQD
 CAMERA_H_FOV = math.radians(65.0)
-CAMERA_V_FOV = math.radians(48.75)  # approximate, assuming same vertical as horizontal resolution
+CAMERA_V_FOV = math.radians(36.5625)  # approximate, assuming same vertical as horizontal resolution
+
+# Camera location relative to Kuka World
+CAM_X = 1.19846
+CAM_Z = 1.48887
+#CAM_Z = 1.4
+CAM_ANGLE = math.radians(20.0)
 
 OUT_SCALE = 0.5
 
@@ -50,27 +56,26 @@ def find_hole(img):
 
 	edge = cv2.Canny(binary_img, 30, 100)
 	cv2.imshow('edge', cv2.resize(edge, None,fx=OUT_SCALE, fy=OUT_SCALE))
-	_, contours, hierarchy = cv2.findContours(edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-#	_, contours, hierarchy = cv2.findContours(edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+	contours, hierarchy = cv2.findContours(edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-	max_x = 0
-	max_y = 0
-	min_x = 9999
-	min_y = 9999
+	if len(contours) < 1:
+		return None
+	else:
+		max_x = 0
+		max_y = 0
+		min_x = 9999
+		min_y = 9999
 
-	for cont in contours:
-		for point in cont:
-			min_x = min(min_x, point[0][0])
-			max_x = max(max_x, point[0][0])
-			min_y = min(min_y, point[0][1])
-			max_y = max(max_y, point[0][1])
+		for cont in contours:
+			for point in cont:
+				min_x = min(min_x, point[0][0])
+				max_x = max(max_x, point[0][0])
+				min_y = min(min_y, point[0][1])
+				max_y = max(max_y, point[0][1])
 
-	x = (min_x + max_x)/2
-	y = (min_y + max_y)/2
-	width = max_x - min_x
-	return (x, y, width)
-
-	return None
+		x = (min_x + max_x)/2
+		y = (min_y + max_y)/2
+		return (x, y)
 
 if __name__=='__main__':
 	cap = cv2.VideoCapture(0)
@@ -78,20 +83,28 @@ if __name__=='__main__':
 	cap.set(4, 1080)
 	while(True):
 		ret, img_read = cap.read()
+		#img_read = cv2.imread("85-5.png")
 		img_read = cv2.rotate(img_read, cv2.ROTATE_180)
 		cv2.imwrite("im_read.png", img_read)
 		img = crop_roi(img_read)
 
-		hole_dims = find_hole(img)
+		hole_pos = find_hole(img)
 
-		if hole_dims != None:
-			angular_width = CAMERA_H_FOV / len(img[0]) * hole_dims[2]
+		if hole_pos != None:
+			h_angle = ( ( hole_pos[0] / len(img[0]) ) * CAMERA_H_FOV ) - CAMERA_H_FOV / 2
+			v_angle = ( ( hole_pos[1] / len(img[1]) ) * CAMERA_V_FOV ) - CAMERA_V_FOV / 2 + CAM_ANGLE
+			cam_h_distance = CAM_Z / math.tan(v_angle)
 
-			cv2.circle(img_read,(int(hole_dims[0]),int(hole_dims[1])), int(hole_dims[2]/2),(0,255,0),3)
-			distance = HOLE_DIAMETER/2 / math.tan(angular_width/2)
+			# SAS
+			throw_length = math.sqrt( CAM_X*CAM_X + cam_h_distance*cam_h_distance - 2 * CAM_X * cam_h_distance * math.cos(3.14159 - h_angle) )
+			throw_angle = math.acos( ( CAM_X*CAM_X + throw_length*throw_length - cam_h_distance*cam_h_distance ) / ( 2 * CAM_X * throw_length ) )
+			throw_angle = math.degrees(throw_angle)
 
-			angle = ( ( ( hole_dims[0] / len(img[0]) ) * CAMERA_H_FOV ) - CAMERA_H_FOV / 2 )  * 57.2958
-			print("D: {0}m, A: {1}".format(distance, angle))
+			cv2.circle(img_read,(int(hole_pos[0]),int(hole_pos[1])), int(50),(0,255,0),3)
+
+			print("D: {0}m, A: {1}".format(throw_length, throw_angle))
+			Power = 0.866 * throw_distance + 0.476
+			Angle = 0.702 * throw_angle + 6.95
 
 		cv2.imshow('hole', cv2.resize(img_read, None, fx=OUT_SCALE, fy=OUT_SCALE))
 
