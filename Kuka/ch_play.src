@@ -31,13 +31,10 @@ RET=EKI_GetReal("ch","Throw/Angle",throwAngle)
 RET=EKI_GetReal("ch","Throw/Power",throwPower)
 $FLAG[987]=FALSE
 
+
 IF throwPower <= 1.0 THEN
 
-BAS(#PTP_PARAMS, 30.0)
-PDAT_ACT = PPDAT9
-FDAT_ACT = FP9
-SET_CD_PARAMS (0)
-PTP XP9
+
 
 ELSE
 
@@ -58,6 +55,12 @@ PDAT_ACT = PPDAT2
 FDAT_ACT = FP2
 SET_CD_PARAMS (0)
 PTP XP2
+
+BAS(#PTP_PARAMS, 30.0)
+PDAT_ACT = PPDAT9
+FDAT_ACT = FP9
+SET_CD_PARAMS (0)
+PTP XP9
 
 ENDIF
 
