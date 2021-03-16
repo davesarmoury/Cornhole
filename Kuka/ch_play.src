@@ -1,8 +1,16 @@
 &ACCESS RVP
-&REL 5
+&REL 21
 &PARAM EDITMASK = *
 &PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\Program\CH
 DEF ch_play( )
+;FOLD Declaration
+  DECL EKI_STATUS RET
+  REAL throwPower
+  REAL throwAngle
+  
+;ENDFOLD (Declaration)
+
 ;FOLD INI;%{PE}
   ;FOLD BASISTECH INI
     GLOBAL INTERRUPT DECL 3 WHEN $STOPMESS==TRUE DO IR_STOPM ( )
@@ -13,52 +21,80 @@ DEF ch_play( )
     ;Make your modifications here
 
   ;ENDFOLD (USER INI)
-;ENDFOLD (INI)
-
-;FOLD Declaration
-  DECL EKI_STATUS RET
-  REAL throwPower
-  REAL throwAngle
-;ENDFOLD (Declaration)
+  ;ENDFOLD (INI)
+  
+throwPower = 0.0
+throwAngle = 0.0
 
 RET=EKI_Init("ch")
 RET=EKI_Open("ch")
 
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT9
+FDAT_ACT = FP9
+BAS(#PTP_PARAMS, 30.0)
+SET_CD_PARAMS (0)
+PTP XP9
+
 LOOP
 
 WAIT FOR $FLAG[987]
-RET=EKI_GetReal("ch","Throw/Angle",throwAngle)
 RET=EKI_GetReal("ch","Throw/Power",throwPower)
+RET=EKI_GetReal("ch","Throw/Angle",throwAngle)
 $FLAG[987]=FALSE
 
-
 IF throwPower <= 1.0 THEN
-
-
+;FOLD PTP P4 Vel=15 % PDAT4 Tool[0] Base[0];%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.basistech.inlineforms.movement.old; Kuka.IsGlobalPoint=False; Kuka.PointName=P4; Kuka.BlendingEnabled=False; Kuka.MoveDataPtpName=PDAT4; Kuka.VelocityPtp=15; Kuka.CurrentCDSetIndex=0; Kuka.MovementParameterFieldEnabled=True; IlfCommand=PTP
+;ENDFOLD
+$BWDSTART = FALSE
+PDAT_ACT = PPDAT4
+FDAT_ACT = FP4
+BAS(#PTP_PARAMS, 15.0)
+SET_CD_PARAMS (0)
+PTP XP4
+;ENDFOLD
 
 ELSE
+BASE_DATA[2].A=throwAngle
 
-BAS(#PTP_PARAMS, throwPower)
+;FOLD LIN P1 Vel=0.5 m/s CPDAT1 Tool[0] Base[2]:Base2 ;%{PE}
+;FOLD Parameters ;%{h}
+;Params IlfProvider=kukaroboter.basistech.inlineforms.movement.old; Kuka.IsGlobalPoint=False; Kuka.PointName=P1; Kuka.BlendingEnabled=False; Kuka.MoveDataName=CPDAT1; Kuka.VelocityPath=0.5; Kuka.CurrentCDSetIndex=0; Kuka.MovementParameterFieldEnabled=True; IlfCommand=LIN
+;ENDFOLD
 $BWDSTART = FALSE
-
+LDAT_ACT = LCPDAT1
+FDAT_ACT = FP1
+BAS(#CP_PARAMS, 0.5)
+SET_CD_PARAMS (0)
+LIN XP1
+;ENDFOLD
+$BWDSTART = FALSE
 PDAT_ACT = PPDAT1
 FDAT_ACT = FP1
+BAS(#PTP_PARAMS, throwPower)
 SET_CD_PARAMS (0)
 PTP XP1
 
+$BWDSTART = FALSE
 PDAT_ACT = PPDAT3
 FDAT_ACT = FP3
+BAS(#PTP_PARAMS, throwPower)
 SET_CD_PARAMS (0)
 PTP XP3 C_Dis
 
+$BWDSTART = FALSE
 PDAT_ACT = PPDAT2
 FDAT_ACT = FP2
+BAS(#PTP_PARAMS, throwPower)
 SET_CD_PARAMS (0)
 PTP XP2
 
-BAS(#PTP_PARAMS, 30.0)
+$BWDSTART = FALSE
 PDAT_ACT = PPDAT9
 FDAT_ACT = FP9
+BAS(#PTP_PARAMS, 30.0)
 SET_CD_PARAMS (0)
 PTP XP9
 

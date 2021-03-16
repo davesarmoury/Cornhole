@@ -5,12 +5,12 @@
 			<PORT>59152</PORT>
 		</EXTERNAL>
 	</CONFIGURATION>
-	<RECEIVE/>
-	<SEND>
-      <XML>
-         	<ELEMENT Tag="Throw/Power" Type="FLOAT"/>
-         	<ELEMENT Tag="Throw/Angle" Type="FLOAT"/>
+	<RECEIVE>
+	     <XML>
+         <ELEMENT Tag="Throw/Power" Type="REAL" />
+         <ELEMENT Tag="Throw/Angle" Type="REAL" />
 			<ELEMENT Tag="Throw" Set_Flag="987" />
        </XML>
-	</SEND>
+   </RECEIVE>
+	<SEND/>
 </ETHERNETKRL>
