@@ -5,6 +5,7 @@ import math
 import numpy as np
 import sys
 import socket
+import os
 
 def inch_to_meter(x):
 	return x * 0.0254
@@ -57,7 +58,7 @@ def find_hole(img):
 
 	edge = cv2.Canny(binary_img, 30, 100)
 	cv2.imshow('edge', cv2.resize(edge, None,fx=OUT_SCALE, fy=OUT_SCALE))
-	contours, hierarchy = cv2.findContours(edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+	_, contours, hierarchy = cv2.findContours(edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
 	if len(contours) < 1:
 		return None
@@ -115,7 +116,7 @@ if __name__=='__main__':
 			ret, img_read = cap.read()
 			#img_read = cv2.imread("85-5.png")
 			img_read = cv2.rotate(img_read, cv2.ROTATE_180)
-			cv2.imwrite("im_read.png", img_read)
+
 			img = crop_roi(img_read)
 
 			hole_pos = find_hole(img)
@@ -132,11 +133,23 @@ if __name__=='__main__':
 
 				cv2.circle(img_read,(int(hole_pos[0]),int(hole_pos[1])), int(50),(0,255,0),3)
 
-				krl_power = 0.866 * throw_distance + 0.476
-				krl_angle = 0.702 * throw_angle + 6.95
-				print("D: {0}m, A: {1}".format(throw_length, throw_angle))
-				
-				conn.sendall(b"<Throw><Power>{0}</Power><Angle>{1}</Angle></Throw>".format(krl_power, krl_angle))
+				krl_angle = 1.12 * throw_angle - 0.321
+				krl_power = 7.02 * throw_length + 6.95
+
+				if os.path.exists("throw.txt"):
+					data_string = "<Throw><Power>{0:.1f}</Power><Angle>{1:.1f}</Angle></Throw>".format(saved_krl_power, saved_krl_angle)
+					print(data_string)
+					conn.send(data_string.encode('utf-8'))
+					os.remove("throw.txt")
+
+				if os.path.exists("load.txt"):
+					print("D: {0}m, A: {1}".format(throw_length, throw_angle))
+					data_string = "<Throw><Power>0.0</Power><Angle>0.0</Angle></Throw>"
+					print(data_string)
+					conn.send(data_string.encode('utf-8'))
+					os.remove("load.txt")
+					saved_krl_angle = krl_angle
+					saved_krl_power = krl_power
 
 			cv2.imshow('hole', cv2.resize(img_read, None, fx=OUT_SCALE, fy=OUT_SCALE))
 
