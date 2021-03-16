@@ -1,0 +1,72 @@
+&ACCESS RVP
+&REL 5
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+DEF ch_play( )
+;FOLD INI;%{PE}
+  ;FOLD BASISTECH INI
+    GLOBAL INTERRUPT DECL 3 WHEN $STOPMESS==TRUE DO IR_STOPM ( )
+    INTERRUPT ON 3
+    BAS (#INITMOV,0 )
+  ;ENDFOLD (BASISTECH INI)
+  ;FOLD USER INI
+    ;Make your modifications here
+
+  ;ENDFOLD (USER INI)
+;ENDFOLD (INI)
+
+;FOLD Declaration
+  DECL EKI_STATUS RET
+  REAL throwPower
+  REAL throwAngle
+;ENDFOLD (Declaration)
+
+RET=EKI_Init("ch")
+RET=EKI_Open("ch")
+
+LOOP
+
+WAIT FOR $FLAG[987]
+RET=EKI_GetReal("ch","Throw/Angle",throwAngle)
+RET=EKI_GetReal("ch","Throw/Power",throwPower)
+$FLAG[987]=FALSE
+
+
+IF throwPower <= 1.0 THEN
+
+
+
+ELSE
+
+BAS(#PTP_PARAMS, throwPower)
+$BWDSTART = FALSE
+
+PDAT_ACT = PPDAT1
+FDAT_ACT = FP1
+SET_CD_PARAMS (0)
+PTP XP1
+
+PDAT_ACT = PPDAT3
+FDAT_ACT = FP3
+SET_CD_PARAMS (0)
+PTP XP3 C_Dis
+
+PDAT_ACT = PPDAT2
+FDAT_ACT = FP2
+SET_CD_PARAMS (0)
+PTP XP2
+
+BAS(#PTP_PARAMS, 30.0)
+PDAT_ACT = PPDAT9
+FDAT_ACT = FP9
+SET_CD_PARAMS (0)
+PTP XP9
+
+ENDIF
+
+ENDLOOP
+
+RET=EKI_Close("ch")
+RET=EKI_Clear("ch")
+
+END
